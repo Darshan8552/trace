@@ -1,0 +1,210 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id            String            @id
+  name          String
+  email         String
+  emailVerified Boolean           @default(false)
+  image         String?
+  role          String            @default("user")
+  banned        Boolean           @default(false)
+  banReason     String?
+  banExpires    DateTime?
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+  sessions      Session[]
+  accounts      Account[]
+  documents     Document[]
+  chats         Chat[]
+  feedback      MessageFeedback[]
+
+  @@unique([email])
+  @@map("user")
+}
+
+model Session {
+  id             String   @id
+  expiresAt      DateTime
+  token          String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  ipAddress      String?
+  userAgent      String?
+  userId         String
+  impersonatedBy String?
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([token])
+  @@index([userId])
+  @@map("session")
+}
+
+model Account {
+  id                    String    @id
+  accountId             String
+  providerId            String
+  userId                String
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@index([userId])
+  @@map("account")
+}
+
+model Verification {
+  id         String   @id
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([identifier])
+  @@map("verification")
+}
+
+enum DocumentStatus {
+  PENDING
+  PROCESSING
+  READY
+  FAILED
+
+  @@map("document_status")
+}
+
+model Document {
+  id                  String         @id @default(cuid())
+  userId              String
+  user                User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  chatId              String
+  chat                Chat           @relation(fields: [chatId], references: [id], onDelete: Cascade)
+  title               String
+  filename            String
+  mimeType            String
+  sizeBytes           Int
+  storageKey          String         @unique
+  sourceUrl           String?
+  sourceCheckedAt     DateTime?
+  contentHash         String?
+  pageCount           Int?
+  status              DocumentStatus @default(PENDING)
+  embeddingProvider   String
+  embeddingModel      String
+  embeddingDimensions Int
+  error               String?
+  createdAt           DateTime       @default(now())
+  updatedAt           DateTime       @updatedAt
+  chunks              Chunk[]
+
+  @@index([userId, chatId, createdAt])
+  @@index([userId, chatId, contentHash])
+  @@map("document")
+}
+
+model Chunk {
+  id         String                       @id @default(cuid())
+  documentId String
+  document   Document                     @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  content    String
+  position   Int
+  page       Int?
+  embedding  Unsupported("vector(1536)")?
+  createdAt  DateTime                     @default(now())
+
+  @@unique([documentId, position])
+  @@index([documentId])
+  @@map("chunk")
+}
+
+enum MessageRole {
+  USER
+  ASSISTANT
+
+  @@map("message_role")
+}
+
+model Chat {
+  id             String        @id @default(cuid())
+  userId         String
+  user           User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title          String
+  titleIsAuto    Boolean       @default(true)
+  isPinned       Boolean       @default(false)
+  shareSlug      String?       @unique
+  shareCreatedAt DateTime?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  messages       ChatMessage[]
+  documents      Document[]
+
+  @@index([userId, updatedAt])
+  @@index([userId, isPinned, updatedAt])
+  @@map("chat")
+}
+
+model ChatMessage {
+  id         String           @id @default(cuid())
+  chatId     String
+  chat       Chat             @relation(fields: [chatId], references: [id], onDelete: Cascade)
+  role       MessageRole
+  content    String
+  sources    Json?
+  externalId String
+  createdAt  DateTime         @default(now())
+  updatedAt  DateTime         @updatedAt
+  feedback   MessageFeedback?
+
+  @@unique([chatId, externalId])
+  @@index([chatId, createdAt])
+  @@map("chat_message")
+}
+
+model MessageFeedback {
+  id        String      @id @default(cuid())
+  messageId String      @unique
+  message   ChatMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  rating    Int
+  reason    String?
+  note      String?
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  @@index([userId, createdAt])
+  @@map("message_feedback")
+}
+
+model RateLimitBucket {
+  key     String   @id
+  count   Int      @default(0)
+  resetAt DateTime
+
+  @@index([resetAt])
+  @@map("rate_limit_bucket")
+}
+
+model BlobDeletion {
+  storageKey String   @id
+  attempts   Int      @default(0)
+  lastError  String?
+  createdAt  DateTime @default(now())
+
+  @@index([createdAt])
+  @@map("blob_deletion")
+}

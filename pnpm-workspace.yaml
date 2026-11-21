@@ -1,0 +1,23 @@
+allowBuilds:
+  '@prisma/engines': true
+  esbuild: true
+  prisma: true
+  sharp: false
+  tesseract.js: false
+  unrs-resolver: false
+minimumReleaseAgeExclude:
+  - '@better-auth/core@1.7.22'
+  - '@better-auth/drizzle-adapter@1.7.22'
+  - '@better-auth/kysely-adapter@1.7.22'
+  - '@better-auth/memory-adapter@1.7.22'
+  - '@better-auth/mongo-adapter@1.7.22'
+  - '@better-auth/prisma-adapter@1.7.22'
+  - '@better-auth/telemetry@1.7.22'
+  - better-auth@1.7.22
+  - '@ai-sdk/gateway@4.0.145'
+  - '@ai-sdk/google@4.0.120'
+  - '@ai-sdk/mcp@2.0.99'
+  - '@ai-sdk/provider-utils@5.0.81'
+  - '@ai-sdk/provider@4.0.38'
+  - '@ai-sdk/react@4.0.176'
+  - ai@7.0.172
